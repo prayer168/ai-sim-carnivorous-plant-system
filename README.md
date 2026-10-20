@@ -4,6 +4,8 @@ AI-SIM demonstrates an evidence-centered inquiry about carnivorous plants. The p
 
 ## Public showcase
 
+GitHub Pages: <https://prayer168.github.io/ai-sim-carnivorous-plant-system/>
+
 The browser experience uses fixed synthetic choices and in-memory state only. It sends no student work to the server and clears the experience when the page reloads. The Python API starts in read-only public mode by default; all API `POST` requests receive `403 showcase_read_only`.
 
 ## Run locally
