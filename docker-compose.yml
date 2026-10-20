@@ -1,0 +1,12 @@
+services:
+  ai-sim:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ai_sim_data:/app/data
+    restart: unless-stopped
+volumes:
+  ai_sim_data:

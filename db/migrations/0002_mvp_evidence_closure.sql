@@ -1,0 +1,14 @@
+-- Additive and idempotent MVP-001 evidence-chain migration.
+CREATE TABLE IF NOT EXISTS observations(id TEXT PRIMARY KEY, project_id TEXT NOT NULL, task_id TEXT NOT NULL REFERENCES tasks(id), student_id TEXT NOT NULL, group_id TEXT NOT NULL, zone_id TEXT NOT NULL REFERENCES zones(id), text TEXT NOT NULL, media_id TEXT, original_version_id TEXT, version_no INTEGER NOT NULL, captured_at TEXT NOT NULL, dataset_type TEXT NOT NULL DEFAULT 'synthetic_demo_only', UNIQUE(project_id,student_id,version_no));
+CREATE TABLE IF NOT EXISTS interventions(id TEXT PRIMARY KEY, task_id TEXT NOT NULL, student_id TEXT NOT NULL, student_pre_ai_version_id TEXT NOT NULL, prompt_template_version TEXT NOT NULL, model_provider TEXT NOT NULL, request_at TEXT NOT NULL, assistant_question TEXT NOT NULL, uncertainty TEXT NOT NULL, safety_flags TEXT NOT NULL, human_reviewed INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS intervention_followups(id TEXT PRIMARY KEY, intervention_id TEXT NOT NULL REFERENCES interventions(id), student_revision_version_id TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS analyses(id TEXT PRIMARY KEY, task_id TEXT NOT NULL, student_id TEXT NOT NULL, reading_ids TEXT NOT NULL, chart_config TEXT NOT NULL, explanation TEXT NOT NULL, created_by TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS cers(id TEXT PRIMARY KEY, task_id TEXT NOT NULL, student_id TEXT NOT NULL, claim TEXT NOT NULL, reasoning TEXT NOT NULL, version_no INTEGER NOT NULL, created_at TEXT NOT NULL, UNIQUE(task_id,student_id,version_no));
+CREATE TABLE IF NOT EXISTS cer_evidence(cer_id TEXT NOT NULL REFERENCES cers(id), evidence_type TEXT NOT NULL, evidence_id TEXT NOT NULL, PRIMARY KEY(cer_id,evidence_type,evidence_id));
+CREATE TABLE IF NOT EXISTS research_exports(id TEXT PRIMARY KEY, file_path TEXT NOT NULL, manifest TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE TRIGGER IF NOT EXISTS readings_immutable_update BEFORE UPDATE ON readings BEGIN SELECT RAISE(ABORT, 'sensor readings are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS readings_immutable_delete BEFORE DELETE ON readings BEGIN SELECT RAISE(ABORT, 'sensor readings are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS pre_ai_immutable_update BEFORE UPDATE ON responses WHEN OLD.phase='pre_ai' BEGIN SELECT RAISE(ABORT, 'pre_ai response is immutable'); END;
+CREATE TRIGGER IF NOT EXISTS pre_ai_immutable_delete BEFORE DELETE ON responses WHEN OLD.phase='pre_ai' BEGIN SELECT RAISE(ABORT, 'pre_ai response is immutable'); END;
+CREATE TRIGGER IF NOT EXISTS observations_immutable_update BEFORE UPDATE ON observations BEGIN SELECT RAISE(ABORT, 'observations are append-only'); END;
+CREATE TRIGGER IF NOT EXISTS observations_immutable_delete BEFORE DELETE ON observations BEGIN SELECT RAISE(ABORT, 'observations are append-only'); END;
