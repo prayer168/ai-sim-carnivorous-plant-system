@@ -5,6 +5,6 @@ COPY web ./web
 COPY db ./db
 COPY docs ./docs
 RUN mkdir -p /app/data
-ENV AI_SIM_HOST=0.0.0.0 AI_SIM_PORT=8000 AI_SIM_DB=/app/data/ai_sim.sqlite3
+ENV AI_SIM_HOST=0.0.0.0 AI_SIM_PORT=8000 AI_SIM_DB=/app/data/ai_sim.sqlite3 AI_SIM_PUBLIC_SHOWCASE=1
 EXPOSE 8000
 CMD ["python", "-m", "app.server"]

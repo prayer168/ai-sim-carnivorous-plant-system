@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = Path(os.environ.get("AI_SIM_DB", ROOT / "data" / "ai_sim.sqlite3"))
 HOST = os.environ.get("AI_SIM_HOST", "127.0.0.1")
 PORT = int(os.environ.get("AI_SIM_PORT", "8000"))
+PUBLIC_SHOWCASE = os.environ.get("AI_SIM_PUBLIC_SHOWCASE", "1").lower() not in {"0", "false", "no", "off"}
 DB_LOCK = threading.RLock()
 ROLES = {
     "teacher-demo-token": {"role": "teacher", "class_id": "C01"},
@@ -173,8 +174,10 @@ class Handler(BaseHTTPRequestHandler):
             parsed = urlparse(self.path)
             path, method = parsed.path, self.command
             q = parse_qs(parsed.query)
+            if PUBLIC_SHOWCASE and method == "POST":
+                raise APIError(403, "showcase_read_only", "公開展示模式不接受或保存 API 寫入；請使用頁面內的合成互動。")
             if path == "/api/v1/health" and method == "GET":
-                return self.send_json(200, {"status": "ok", "mode": "synthetic-local", "external_ai": False})
+                return self.send_json(200, {"status": "ok", "mode": "synthetic-public-showcase" if PUBLIC_SHOWCASE else "synthetic-local-development", "external_ai": False, "writes_enabled": not PUBLIC_SHOWCASE})
             if path == "/api/v1/workspace" and method == "GET":
                 actor=self.actor("student","teacher")
                 if actor["role"]=="teacher" and actor["class_id"]!="C01": raise APIError(403,"forbidden","此教師未授權此班級")

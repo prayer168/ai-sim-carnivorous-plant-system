@@ -24,6 +24,7 @@ class E2ETest(unittest.TestCase):
         env["AI_SIM_DB"] = str(Path(cls.temp.name) / "test.sqlite3")
         env["AI_SIM_HOST"] = "127.0.0.1"
         env["AI_SIM_PORT"] = "18765"
+        env["AI_SIM_PUBLIC_SHOWCASE"] = "0"
         cls.proc = subprocess.Popen([sys.executable, "-m", "app.server"], cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         cls.base = "http://127.0.0.1:18765"
         for _ in range(80):
@@ -148,6 +149,54 @@ class E2ETest(unittest.TestCase):
         self.assertEqual(self.request("POST","/api/v1/research/exports","research-demo-token",{"scope":"teaching"})[0],403)
         actions={e["action"] for e in audit["events"]}
         self.assertTrue({"research.export","teacher.rubric_score","observation.append","ai.intervention","cer.submit"}.issubset(actions))
+
+
+class PublicShowcaseTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.temp = tempfile.TemporaryDirectory()
+        env = os.environ.copy()
+        env["AI_SIM_DB"] = str(Path(cls.temp.name) / "public-showcase.sqlite3")
+        env["AI_SIM_HOST"] = "127.0.0.1"
+        env["AI_SIM_PORT"] = "18766"
+        env["AI_SIM_PUBLIC_SHOWCASE"] = "1"
+        cls.proc = subprocess.Popen([sys.executable, "-m", "app.server"], cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        cls.base = "http://127.0.0.1:18766"
+        for _ in range(80):
+            try:
+                with urllib.request.urlopen(cls.base + "/api/v1/health", timeout=1):
+                    break
+            except Exception:
+                time.sleep(.1)
+        else:
+            raise RuntimeError("Public showcase API did not start")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.proc.terminate()
+        cls.proc.wait(timeout=5)
+        cls.temp.cleanup()
+
+    def test_public_site_is_synthetic_and_api_is_read_only(self):
+        with urllib.request.urlopen(self.base + "/api/v1/health", timeout=2) as response:
+            health = json.loads(response.read())
+        self.assertEqual(health["mode"], "synthetic-public-showcase")
+        self.assertFalse(health["writes_enabled"])
+        with urllib.request.urlopen(self.base + "/", timeout=2) as response:
+            page = response.read().decode("utf-8")
+        self.assertIn("公開展示模式・僅使用合成資料", page)
+        self.assertIn("重新整理即清除", page)
+        request = urllib.request.Request(
+            self.base + "/api/v1/observations",
+            data=json.dumps({"task_id": "TASK-DEMO", "zone_id": "Z01", "text": "synthetic"}).encode(),
+            headers={"Content-Type": "application/json", "Authorization": "Bearer student-g01-demo-token"},
+            method="POST",
+        )
+        with self.assertRaises(urllib.error.HTTPError) as err:
+            urllib.request.urlopen(request, timeout=2)
+        self.assertEqual(err.exception.code, 403)
+        body = json.loads(err.exception.read())
+        self.assertEqual(body["error"]["code"], "showcase_read_only")
 
 
 if __name__ == "__main__":

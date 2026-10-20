@@ -1,54 +1,54 @@
-# AI-SIM 食蟲植物智慧探究實驗室
+# AI-SIM Carnivorous Plant Inquiry Lab
 
-本儲存庫由 V1.1 開發包落地為可本機操作的匿名教學示範。第一輪用 Python 3.11 標準庫、SQLite 和靜態網頁，不需要套件安裝、外部 AI 金鑰、ESP32 或雲端服務。
+AI-SIM demonstrates an evidence-centered inquiry about carnivorous plants. The public showcase includes a system introduction, an interactive six-stage student flow, and a teacher review example.
 
-## 快速啟動
+## Public showcase
 
-Windows PowerShell：
+The browser experience uses fixed synthetic choices and in-memory state only. It sends no student work to the server and clears the experience when the page reloads. The Python API starts in read-only public mode by default; all API `POST` requests receive `403 showcase_read_only`.
+
+## Run locally
+
+Requires Python 3.11 or newer. From the repository root:
 
 ```powershell
-cd ai-sim-mvp
 python -m app.server
 ```
 
-瀏覽 http://127.0.0.1:8000 。停止按 Ctrl+C。資料存在 `data/ai_sim.sqlite3`；重置示範資料可停止服務後刪除此檔，再啟動服務。
+Open <http://127.0.0.1:8000>. The page is served from `web/index.html`.
 
-Docker Compose（需先安裝 Docker Desktop）：`docker compose up --build`，然後開啟同一網址。`.env.example` 列出可調整設定。
+## Local API development
 
-## 角色種子帳號
+To exercise the full SQLite API locally, set `AI_SIM_PUBLIC_SHOWCASE=0` before startup. This enables write endpoints and uses the fixed demo bearer tokens described in `docs/OPERATIONS.md`; keep this development mode off public networks.
 
-帳號以本機示範 Bearer token 代表，請在 UI 角色選單切換。G01/G02 的學生各有不同小組；教師僅看示範班，研究者匯出 consent=true 的假名資料，裝置服務帳號只可上報感測值。這不是正式登入或可部署的認證方式。
+```powershell
+$env:AI_SIM_PUBLIC_SHOWCASE = "0"
+python -m app.server
+```
 
-## MVP-001 六階段證據閉環
-
-1. 學生提交觀察並取得原始 observation_id，初答提交後鎖定。
-2. Mock AI 只回最多三個引導問題，留下介入版本/不確定性/安全旗標。
-3. 九格設備模擬器寫入追加式感測資料；遲到、缺測、冪等及共用光源均保留來源資訊。
-4. 同指標分析建立 SVG 時間序列；每個圖表點帶 reading_id。
-5. CER 提交時逐筆確認 observation/readings/analysis ID 可回查。
-6. 教師人工 Rubric 評閱，研究者取得只含同意範圍的 JSON/CSV/字典/雜湊 manifest ZIP。
-
-所有示範讀值與學生作品均為合成資料。趨勢圖與簡單序列摘要不構成因果證據。
-
-## API 與文件
-
-- `GET /api/v1/health`, `GET /api/v1/zones`, `GET /api/v1/readings`
-- `POST /api/v1/tasks`, `POST /api/v1/responses`, `POST /api/v1/ai/hints`
-- `POST /api/v1/cer/feedback`, `POST /api/v1/rubric-scores`, `POST /api/v1/research/exports`
-- `POST /api/v1/ingest/readings`（device role 專用）
-- `GET /api/v1/audit`（教師/研究者）
-- `GET /api/v1/openapi.json`
-
-詳細操作、T01–T12/E01–E08 驗收矩陣、資料字典、備份還原與部署限制見 `docs/` 及 `tests/acceptance_matrix.md`。
-
-## 測試
+Run the API acceptance suite with:
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-## Sprint 記錄
+The suite explicitly turns API writes on for its isolated test database and separately verifies the public read-only behavior.
 
-見 `docs/SPRINT_LOG.md`、`docs/adr/` 與 `docs/RISKS.md`。Docker Compose 定義已提供，但目前建置環境沒有 Docker CLI，尚未能實際驗證容器啟動。
+## Container
 
+Docker Compose starts with public read-only mode enabled:
 
+```powershell
+docker compose up --build
+```
+
+The container listens on port 8000. The compose file expects a local `.env` copied from `.env.example`.
+
+## Evidence and safety
+
+- The six stages are observation, AI question, synthetic readings, analysis, CER, and teacher review.
+- Original observations and sensor readings are append-only in API development mode; CER evidence references source IDs.
+- The showcase makes no external AI calls and presents Mock AI questions as prompts, not scientific findings.
+- Shared environment or lighting conditions are not independent experimental replicates.
+- Charts describe sample values and cannot establish causation by themselves.
+
+See `docs/OPERATIONS.md`, `docs/RISKS.md`, `docs/DATA_DICTIONARY.md`, and `tests/acceptance_matrix.md` for the API and its limits.
